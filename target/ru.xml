@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<translations>
+    <entry id="1">
+        <source>Hello, world!</source>
+        <target>Привет, мир!</target>
+    </entry>
+    <entry id="2">
+        <source>Good morning</source>
+        <target>Доброе утро</target>
+    </entry>
+</translations>

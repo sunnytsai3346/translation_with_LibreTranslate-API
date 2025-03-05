@@ -1,41 +1,57 @@
+import os
 import xml.etree.ElementTree as ET
 import requests
 
 # Load and parse the XML file
-xml_file = ".\\xml\\de.xml"
-tree = ET.parse(xml_file)
-root = tree.getroot()
-
-# LibreTranslate API endpoint (replace with your URL if different)
+input_folder = "xml"
+output_folder = "target"
+# LibreTranslate API endpoint 
 api_url = "http://localhost:5000/translate"
-
-# Translation settings
 source_lang = "en"  # Source language (e.g., English)
-target_lang = "de"  # Target language (e.g., Spanish)
 
-# Loop through each entry in the XML
-for entry in root.findall("entry"):
-    source_text = entry.find("source").text  # Get text to translate
-    
-    # Prepare the API request payload
+# Create output folder if it doesn’t exist
+os.makedirs(output_folder, exist_ok=True)
+
+
+# Function to translate text via LibreTranslate
+def translate_text(text, target_lang):
     payload = {
-        "q": source_text,
+        "q": text,
         "source": source_lang,
         "target": target_lang,
         "format": "text"
     }
-    
-    # Send request to LibreTranslate
     response = requests.post(api_url, data=payload)
-    
     if response.status_code == 200:
-        translated_text = response.json()["translatedText"]
-        # Update the <target> tag with the translated text
-        entry.find("target").text = translated_text
+        return response.json()["translatedText"]
     else:
-        print(f"Failed to translate '{source_text}': {response.status_code}")
+        print(f"Failed to translate '{text}' to {target_lang}: {response.status_code}")
+        return None
 
-# Save the updated XML to a new file
-tree.write("translated_output.xml", encoding="utf-8", xml_declaration=True)
+#Process each XML file in the input folder
+for filename in os.listdir(input_folder):
+    if filename.endswith(".xml"):
+        # Extract target language from filename (e.g., "de" from "de.xml")
+        target_lang = filename.split(".")[0]  # Assumes format like "de.xml"
+        
+        # Full paths for input and output files
+        input_path = os.path.join(input_folder, filename)
+        output_path = os.path.join(output_folder, filename)
+        
+        # Parse the XML file
+        tree = ET.parse(input_path)
+        root = tree.getroot()
+        
+        # Translate each <source> tag and update <target>
+        for entry in root.findall("entry"):
+            source_text = entry.find("source").text
+            if source_text:  # Ensure there’s text to translate
+                translated_text = translate_text(source_text, target_lang)
+                if translated_text:
+                    entry.find("target").text = translated_text
+        
+        # Save the updated XML to the target folder
+        tree.write(output_path, encoding="utf-8", xml_declaration=True)
+        print(f"Processed {filename} -> {output_path}")
 
-print("Translation complete! Check 'translated_output.xml'.")
+print("All translations complete!")
