@@ -6,7 +6,7 @@ import requests
 input_folder = "xml"
 output_folder = "target"
 # LibreTranslate API endpoint 
-api_url = "http://localhost:5000/translate"
+api_url = "http://127.0.0.1:5000/translate"
 source_lang = "en"  # Source language (e.g., English)
 
 # Create output folder if it doesn’t exist
@@ -30,9 +30,9 @@ def translate_text(text, target_lang):
 
 #Process each XML file in the input folder
 for filename in os.listdir(input_folder):
-    if filename.endswith(".xml"):
+    if filename.endswith(".ts"):
         # Extract target language from filename (e.g., "de" from "de.xml")
-        target_lang = filename.split(".")[0]  # Assumes format like "de.xml"
+        target_lang = filename.split(".")[0].lower()  # Assumes format like "de.xml"
         
         # Full paths for input and output files
         input_path = os.path.join(input_folder, filename)
@@ -40,15 +40,25 @@ for filename in os.listdir(input_folder):
         
         # Parse the XML file
         tree = ET.parse(input_path)
-        root = tree.getroot()
-        
+        root = tree.getroot()        
         # Translate each <source> tag and update <target>
-        for entry in root.findall("entry"):
-            source_text = entry.find("source").text
-            if source_text:  # Ensure there’s text to translate
-                translated_text = translate_text(source_text, target_lang)
-                if translated_text:
-                    entry.find("target").text = translated_text
+        for context in root.findall("context"):            
+            for message_entry in context.findall("message"):
+                source_text = message_entry.find("source").text
+                translation_tag = message_entry.find("translation").text
+                # Check if the object has the attribute "type"
+                if hasattr(message_entry, "type"):
+                    unfinished = message_entry.attrib['type']
+                    print(f"type:{unfinished}")
+                else:
+                    unfinished = ''
+                
+                if source_text:  # Ensure there’s text to translate
+                    translated_text = translate_text(source_text, target_lang)
+                    
+                    if translated_text and unfinished == 'unfinished': 
+                        print (f"{source_text}, {translate_text}")
+                        message_entry.find("translation").text = translated_text
         
         # Save the updated XML to the target folder
         tree.write(output_path, encoding="utf-8", xml_declaration=True)
