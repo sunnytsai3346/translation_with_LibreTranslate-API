@@ -31,6 +31,7 @@ def translate_text(text, target_lang):
 #Process each XML file in the input folder
 for filename in os.listdir(input_folder):
     if filename.endswith(".ts"):
+        translated_count = 0
         # Extract target language from filename (e.g., "de" from "de.xml")
         target_lang = filename.split(".")[0].lower()  # Assumes format like "de.xml"
         
@@ -42,26 +43,25 @@ for filename in os.listdir(input_folder):
         tree = ET.parse(input_path)
         root = tree.getroot()        
         # Translate each <source> tag and update <target>
-        for context in root.findall("context"):            
-            for message_entry in context.findall("message"):
-                source_text = message_entry.find("source").text
-                translation_tag = message_entry.find("translation").text
-                # Check if the object has the attribute "type"
-                if hasattr(message_entry, "type"):
-                    unfinished = message_entry.attrib['type']
-                    print(f"type:{unfinished}")
-                else:
-                    unfinished = ''
-                
-                if source_text:  # Ensure there’s text to translate
+        for message in root.findall(".//message"):            
+            source_elem = message.find("source")
+            translation_elem = message.find("translation")
+
+            if source_elem is not None and translation_elem is not None:
+                source_text = source_elem.text.strip() if source_elem.text else ""
+                translated_type = translation_elem.get("type")
+
+                if translated_type =='unfinished' and source_text:
                     translated_text = translate_text(source_text, target_lang)
-                    
-                    if translated_text and unfinished == 'unfinished': 
-                        print (f"{source_text}, {translate_text}")
-                        message_entry.find("translation").text = translated_text
-        
+                    translation_elem.text = translated_text
+                    del translation_elem.attrib['type']
+                    translated_count +=1
+                    print(f"Translated: '{source_text} -> {translated_text}")
+                
+                
+    
         # Save the updated XML to the target folder
         tree.write(output_path, encoding="utf-8", xml_declaration=True)
-        print(f"Processed {filename} -> {output_path}")
+        print(f"\nProcessed {translated_count} translations . {filename} -> {output_path}")
 
 print("All translations complete!")
